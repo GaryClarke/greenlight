@@ -1,0 +1,19 @@
+version: '3.9'
+
+services:
+    db:
+        image: postgres:17
+        container_name: greenlight_db
+        restart: unless-stopped
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: supersecret
+            POSTGRES_DB: greenlight
+        ports:
+            - "5432:5432"
+        volumes:
+            - greenlight_data:/var/lib/postgresql/data
+            - ./init-scripts:/docker-entrypoint-initdb.d
+
+volumes:
+    greenlight_data:

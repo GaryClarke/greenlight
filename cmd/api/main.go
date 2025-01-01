@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"github.com/joho/godotenv"
+	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -32,7 +34,10 @@ type config struct {
 	// Add a db struct field to hold the configuration settings for our database connection
 	// pool. For now this only holds the DSN, which we will read in from a command-line flag.
 	db struct {
-		dsn string
+		dsn          string
+		maxOpenConns int
+		maxIdleConns int
+		maxIdleTime  time.Duration
 	}
 }
 
@@ -45,6 +50,12 @@ type application struct {
 }
 
 func main() {
+	// Load the .env file
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file: %v", err)
+	}
+
 	// Declare an instance of the config struct.
 	var cfg config
 
@@ -54,11 +65,17 @@ func main() {
 	flag.IntVar(&cfg.port, "port", 4000, "API server port")
 	flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production)")
 
+	// Read the connection pool settings from command-line flags into the config struct.
+	// Notice that the default values we're using are the ones we discussed above?
+	flag.IntVar(&cfg.db.maxOpenConns, "db-max-open-conns", 25, "PostgreSQL max open connections")
+	flag.IntVar(&cfg.db.maxIdleConns, "db-max-idle-conns", 25, "PostgreSQL max idle connections")
+	flag.DurationVar(&cfg.db.maxIdleTime, "db-max-idle-time", 15*time.Minute, "PostgreSQL max connection idle time")
+
 	// Read the DSN value from the db-dsn command-line flag into the config struct. We
 	// default to using our development DSN if no flag is provided.
 	// postgres://greenlight:pa55word@localhost/greenlight
 	// Connection string with SSL disabled
-	flag.StringVar(&cfg.db.dsn, "db-dsn", "postgres://greenlight:pa55word@localhost:5432/greenlight?sslmode=disable", "PostgreSQL DSN")
+	flag.StringVar(&cfg.db.dsn, "db-dsn", os.Getenv("DATABASE_DSN"), "PostgreSQL DSN")
 
 	flag.Parse()
 

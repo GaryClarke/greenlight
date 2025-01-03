@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"github.com/garyclarke/greenlight/internal/data"
 	"github.com/joho/godotenv"
 	"log"
 	"log/slog"
@@ -47,6 +48,7 @@ type config struct {
 type application struct {
 	config config
 	logger *slog.Logger
+	models data.Models
 }
 
 func main() {
@@ -75,7 +77,7 @@ func main() {
 	// default to using our development DSN if no flag is provided.
 	// postgres://greenlight:pa55word@localhost/greenlight
 	// Connection string with SSL disabled
-	flag.StringVar(&cfg.db.dsn, "db-dsn", os.Getenv("DATABASE_DSN"), "PostgreSQL DSN")
+	flag.StringVar(&cfg.db.dsn, "db-dsn", os.Getenv("DATABASE_DSN"), "PostgresSQL DSN")
 
 	flag.Parse()
 
@@ -105,6 +107,7 @@ func main() {
 	app := &application{
 		config: cfg,
 		logger: logger,
+		models: data.NewModels(db),
 	}
 
 	// Declare a HTTP server which listens on the port provided in the config struct,

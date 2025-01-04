@@ -46,6 +46,7 @@ func ValidateMovie(v *validator.Validator, movie *Movie) {
 	v.Check(validator.Unique(movie.Genres), "genres", "must not contain duplicate values")
 }
 
+// MovieModel Define a MovieModel struct type which wraps a sql.DB connection pool.
 type MovieModel struct {
 	DB *sql.DB
 }
@@ -71,7 +72,7 @@ func (m MovieModel) Insert(movie *Movie) error {
 	return m.DB.QueryRow(query, args...).Scan(&movie.ID, &movie.CreatedAt, &movie.Version)
 }
 
-// Get Add a placeholder method for fetching a specific record from the movies table by ID
+// Get Add a placeholder method for fetching a specific record from the movies table.
 func (m MovieModel) Get(id int64) (*Movie, error) {
 	return nil, nil
 }

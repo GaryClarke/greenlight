@@ -111,3 +111,71 @@ func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request)
 		app.serverErrorResponse(w, r, err)
 	}
 }
+
+func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Request) {
+	// Extract the movie ID from the URL using the app.readIDParam() helper.
+	id, err := app.readIDParam(r)
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+
+	// Fetch the corresponding movie record from the database using the Get() method that we made in the previous chapter.
+	movie, err := app.models.Movies.Get(id)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	// Read the JSON request body containing the updated movie data into an input struct.
+	var input struct {
+		Title   string       `json:"title"`
+		Year    int32        `json:"year"`
+		Runtime data.Runtime `json:"runtime"`
+		Genres  []string     `json:"genres"`
+	}
+
+	err = app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	// Copy the data across from the input struct to the movie record.
+	movie.Title = input.Title
+	movie.Year = input.Year
+	movie.Runtime = input.Runtime
+	movie.Genres = input.Genres
+
+	// Check that the updated movie record is valid using the data.ValidateMovie() function.
+	v := validator.New()
+
+	data.ValidateMovie(v, movie)
+
+	// Use the Valid() method to see if any of the checks failed. If they did, then use
+	// the failedValidationResponse() helper to send a response to the client, passing
+	// in the v.Errors map.
+	if !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	// Call the Update() method to store the updated movie record in our database.
+	err = app.models.Movies.Update(movie)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	// Write the updated movie data in a JSON response using the app.writeJSON() helper.
+	err = app.writeJSON(w, http.StatusOK, envelope{"movie": movie}, make(http.Header))
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}

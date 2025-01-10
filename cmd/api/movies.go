@@ -46,11 +46,6 @@ func (app *application) listMoviesHandler(w http.ResponseWriter, r *http.Request
 	// containing the errors if necessary.
 	data.ValidateFilters(v, input.Filters)
 
-	if !v.Valid() {
-		app.failedValidationResponse(w, r, v.Errors)
-		return
-	}
-
 	// Check the Validator instance for any errors and use the failedValidationResponse()
 	// helper to send the client a response if necessary.
 	if !v.Valid() {
@@ -58,7 +53,19 @@ func (app *application) listMoviesHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	fmt.Fprintf(w, "%+v\n", input)
+	// Call the GetAll() method to retrieve the movies, passing in the various filter
+	// parameters.
+	movies, err := app.models.Movies.GetAll(input.Title, input.Genres, input.Filters)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	// Send a JSON response containing the movie data.
+	err = app.writeJSON(w, http.StatusOK, envelope{"movies": movies}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
 }
 
 // Add a createMovieHandler for the "POST /v1/movies" endpoint. For now, we simply

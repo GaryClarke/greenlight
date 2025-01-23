@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"flag"
 	"github.com/garyclarke/greenlight/internal/data"
+	"github.com/garyclarke/greenlight/internal/mailer"
 	"github.com/joho/godotenv"
 	"log"
 	"log/slog"
@@ -46,6 +47,13 @@ type config struct {
 		burst   int
 		enabled bool
 	}
+	smtp struct {
+		host     string
+		port     int
+		username string
+		password string
+		sender   string
+	}
 }
 
 // Define an application struct to hold the dependencies for our HTTP handlers, helpers,
@@ -55,6 +63,7 @@ type application struct {
 	config config
 	logger *slog.Logger
 	models data.Models
+	mailer mailer.Mailer
 }
 
 func main() {
@@ -91,6 +100,16 @@ func main() {
 	flag.IntVar(&cfg.limiter.burst, "limiter-burst", 4, "Rate limiter maximum burst")
 	flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
 
+	// Read the SMTP server configuration settings into the config struct, using the
+	// Mailtrap settings as the default values. IMPORTANT: If you're following along,
+	// make sure to replace the default values for smtp-username and smtp-password
+	// with your own Mailtrap credentials.
+	flag.StringVar(&cfg.smtp.host, "smtp-host", "sandbox.smtp.mailtrap.io", "SMTP Host")
+	flag.IntVar(&cfg.smtp.port, "smtp-port", 25, "SMTP Port")
+	flag.StringVar(&cfg.smtp.username, "smtp-username", "f2672ce837f31f", "SMTP Username")
+	flag.StringVar(&cfg.smtp.password, "smtp-password", "eb054990585d17", "SMTP Password")
+	flag.StringVar(&cfg.smtp.sender, "smtp-sender", "Greenlight <no-reply@greenlight.alexedwards.net>", "SMTP Sender")
+
 	flag.Parse()
 
 	// Initialize a new structured logger which writes log entries to the standard out
@@ -122,6 +141,9 @@ func main() {
 		config: cfg,
 		logger: logger,
 		models: data.NewModels(db),
+		// Initialize a new Mailer instance using the settings from the command line
+		// flags, and add it to the application struct.
+		mailer: mailer.New(cfg.smtp.host, cfg.smtp.port, cfg.smtp.username, cfg.smtp.password, cfg.smtp.sender),
 	}
 
 	// Call app.serve() to start the server.

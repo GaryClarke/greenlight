@@ -5,6 +5,7 @@ import (
 	"github.com/garyclarke/greenlight/internal/data"
 	"github.com/garyclarke/greenlight/internal/validator"
 	"net/http"
+	"time"
 )
 
 func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Request) {
@@ -66,8 +67,25 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// After the user record has been created in the database, generate a new activation
+	// token for the user.
+	token, err := app.models.Tokens.New(user.ID, 3*24*time.Hour, data.ScopeActivation)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
 	app.background(func() {
-		err = app.mailer.Send(user.Email, "user_welcome.tmpl", user)
+		// As there are now multiple pieces of data that we want to pass to our email
+		// templates, we create a map to act as a 'holding structure' for the data. This
+		// contains the plaintext version of the activation token for the user, along
+		// with their ID.
+		data := map[string]any{
+			"activationToken": token.Plaintext,
+			"userID":          user.ID,
+		}
+
+		err = app.mailer.Send(user.Email, "user_welcome.tmpl", data)
 		if err != nil {
 			app.logger.Error(err.Error())
 		}

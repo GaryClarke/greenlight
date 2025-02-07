@@ -41,5 +41,6 @@ func (app *application) routes() http.Handler {
 	router.Handler(http.MethodGet, "/debug/vars", expvar.Handler())
 
 	// Wrap the router with the middleware.
-	return app.recoverPanic(app.enableCORS(app.rateLimit(app.authenticate(router))))
+	// Use the new metrics() middleware at the start of the chain.
+	return app.metrics(app.recoverPanic(app.enableCORS(app.rateLimit(app.authenticate(router)))))
 }

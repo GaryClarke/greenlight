@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"expvar"
 	"flag"
 	"github.com/garyclarke/greenlight/internal/data"
 	"github.com/garyclarke/greenlight/internal/mailer"
@@ -10,6 +11,8 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -54,6 +57,10 @@ type config struct {
 		username string
 		password string
 		sender   string
+	}
+	// Add a cors struct and trustedOrigins field with the type []string.
+	cors struct {
+		trustedOrigins []string
 	}
 }
 
@@ -115,6 +122,17 @@ func main() {
 	flag.StringVar(&cfg.smtp.password, "smtp-password", "eb054990585d17", "SMTP Password")
 	flag.StringVar(&cfg.smtp.sender, "smtp-sender", "Greenlight <no-reply@greenlight.alexedwards.net>", "SMTP Sender")
 
+	// Use the flag.Func() function to process the -cors-trusted-origins command line
+	// flag. In this we use the strings.Fields() function to split the flag value into a
+	// slice based on whitespace characters and assign it to our config struct.
+	// Importantly, if the -cors-trusted-origins flag is not present, contains the empty
+	// string, or contains only whitespace, then strings.Fields() will return an empty
+	// []string slice.
+	flag.Func("cors-trusted-origins", "Trusted CORS origins (space separated)", func(val string) error {
+		cfg.cors.trustedOrigins = strings.Fields(val)
+		return nil
+	})
+
 	flag.Parse()
 
 	// Initialize a new structured logger which writes log entries to the standard out
@@ -137,6 +155,25 @@ func main() {
 	// Also log a message to say that the connection pool has been successfully
 	// established.
 	logger.Info("database connection pool established")
+
+	// Publish a new "version" variable in the expvar handler containing our application
+	// version number (currently the constant "1.0.0").
+	expvar.NewString("version").Set(version)
+
+	// Publish the number of active goroutines.
+	expvar.Publish("goroutines", expvar.Func(func() any {
+		return runtime.NumGoroutine()
+	}))
+
+	// Publish the database connection pool statistics.
+	expvar.Publish("database", expvar.Func(func() any {
+		return db.Stats()
+	}))
+
+	// Publish the current Unix timestamp.
+	expvar.Publish("timestamp", expvar.Func(func() any {
+		return time.Now().Unix()
+	}))
 
 	// Declare an instance of the application struct, containing the config struct and
 	// the logger.

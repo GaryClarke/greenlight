@@ -1,6 +1,5 @@
 # Load .env file automatically
 include .env
-export $(shell sed 's/=.*//' .env)
 
 ## help: print this help message
 .PHONY: help
@@ -16,7 +15,7 @@ confirm:
 ## run/api: run the cmd/api application
 .PHONY: run/api
 run/api:
-	go run ./cmd/api
+	go run ./cmd/api -db-dsn=${DATABASE_DSN}
 
 ## db/psql: connect to the database using psql
 .PHONY: db/psql

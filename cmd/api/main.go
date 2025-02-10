@@ -104,7 +104,7 @@ func main() {
 	// default to using our development DSN if no flag is provided.
 	// postgres://greenlight:pa55word@localhost/greenlight
 	// Connection string with SSL disabled
-	flag.StringVar(&cfg.db.dsn, "db-dsn", os.Getenv("DATABASE_DSN"), "PostgresSQL DSN")
+	flag.StringVar(&cfg.db.dsn, "db-dsn", "", "PostgresSQL DSN")
 
 	// Create command line flags to read the setting values into the config struct.
 	// Notice that we use true as the default for the 'enabled' setting?
